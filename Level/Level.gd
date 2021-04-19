@@ -2,7 +2,6 @@ extends Node2D
 
 signal level_won
 
-export (PackedScene) var Ghost
 export (PackedScene) var Player: PackedScene
 
 var real_player: Player
@@ -14,23 +13,23 @@ func _ready():
 	pass
 
 
-func start_level():
+func start_level(echo_enabled):
 	var player = Player.instance()
 	real_player = player
 	real_player.start_as_real($StartLocation.position, 0)
 	real_player.connect("echo", self, "echo")
+	real_player.can_echo = echo_enabled
 	add_child(real_player)
 	
-	var ghost = Player.instance()
-	ghost_player = ghost
-	ghost_player.start_as_ghost(real_player)
-	ghost_player.z_index = -1
-	add_child(ghost_player)
+	if (real_player.can_echo):
+		var ghost = Player.instance()
+		ghost_player = ghost
+		ghost_player.start_as_ghost(real_player)
+		ghost_player.z_index = -1
+		add_child(ghost_player)
 	
 	$Elevator.connect("player_entered", self, "delete_player")
 	$Elevator.connect("finished_descending", self, "win_level")
-	
-	$Elevator.register_key($Button)
 
 
 func clear_level():
@@ -40,7 +39,8 @@ func clear_level():
 	
 	var objects = get_tree().get_nodes_in_group("level_objects")
 	for x in objects:
-		x.reset()
+		if (x.has_method("reset")):
+			x.reset()
 	
 	delete_player()
 
@@ -51,17 +51,10 @@ func win_level():
 
 
 func delete_player():
-	if (real_player != null):
-		real_player.queue_free()
 	if (ghost_player != null):
 		ghost_player.queue_free()
-
-
-func _physics_process(delta):
 	if (real_player != null):
-		$debugcurrent.text = "Current Frame: %d" % real_player.current_frame
-		$debugecho.text = "Echo Frame: %d" % real_player.echo_frame
-		$debugcharge.text = "Next Echo: %d" % real_player.next_echo
+		real_player.queue_free()
 
 
 func echo(player: Player):

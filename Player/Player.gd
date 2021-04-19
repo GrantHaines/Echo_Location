@@ -10,7 +10,7 @@ enum PlayerType {REAL, GHOST, ECHO}
 
 const acceleration = 100
 const max_speed = 150
-const record_time = 60 * 6
+const record_time = 60 * 5
 const echo_delay = 5
 
 var player_type: int = PlayerType.REAL
@@ -24,6 +24,8 @@ var past_actions: Dictionary = Dictionary()
 var current_actions: Array = Array()
 
 var next_echo: int = 0
+
+var can_echo: bool = true
 
 var carrying_item
 
@@ -62,14 +64,14 @@ func start_as_ghost(player: Player):
 	current_frame = player.echo_frame
 	past_actions = player.past_actions
 	past_locations = player.past_locations
-	position = player.echo_location
+	position = player.position
 	collision_mask = 0
 	
 	$AnimatedSprite.modulate = Color(0.5, 0.5, 0.5, 0.5)
 	ghost_parent_player = player
 
 
-func reset_to_time(frame, parent_node):
+func reset_to_time(frame, _parent_node):
 	# check if we still exist
 	if (frame >= echo_frame + record_time):
 		emit_signal("kill_echo", self)
@@ -80,7 +82,7 @@ func reset_to_time(frame, parent_node):
 		visible = true
 
 
-func _physics_process(delta):
+func _physics_process(_delta):
 	var move_direction = Vector2()
 	
 	if (player_type == PlayerType.REAL):
@@ -94,7 +96,8 @@ func _physics_process(delta):
 		# Update echo frame
 		if (current_frame - echo_frame > record_time):
 			echo_frame += 1
-		if (Input.is_action_just_pressed("game_action") && current_frame > next_echo):
+		if (can_echo && Input.is_action_just_pressed("game_action") && current_frame > next_echo):
+			drop_carried_item()
 			emit_signal("echo", self)
 	
 	elif (player_type == PlayerType.ECHO):
@@ -172,6 +175,7 @@ func pickup_item():
 		get_parent().remove_child(carrying_item)
 		$PickedUpSprite.texture = carrying_item.get_node("Sprite").texture
 		$PickedUpSprite.visible = true
+		AudioManager.play_box_pickup()
 
 
 func drop_carried_item():
@@ -181,6 +185,7 @@ func drop_carried_item():
 		carrying_item.position = position
 		carrying_item.drop(current_frame)
 		carrying_item = null
+		AudioManager.play_box_pickup()
 
 
 # Get the movement direction from current player input
